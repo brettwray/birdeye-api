@@ -1,0 +1,346 @@
+<meta name="viewport" content="width=device-width" />
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" type="text/css" />
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+</script>
+<script type="text/javascript">
+	var data = {};
+	data.business = {};
+	data.reviews = {};
+	data.overall = {};
+	data.seo = {};
+	data.sources = {};
+	data.index = 0;
+	// Enter Business ID Below!
+	data.businessid ='enter business ID here';
+	//Enter Your API Key below.
+	data.api_key ='enter API Key here';
+	$.ajax({
+	  method: "GET",
+	  dataType: 'json',
+	  url: "https://api.birdeye.com/resources/v1/business/" + data.businessid + "/?api_key=" + data.api_key + "&op=1"
+	})
+	  .done(function( response ) {
+	  	data.business = response;
+	  	getReview([]);
+	  	getReviewOverall();
+	  	getSeoData();
+  		  	});
+	var getReview = function (sources) { 
+		var req = {"sources":sources};
+		$.ajax({
+		  method: "POST",
+		  dataType: 'json',	
+		  headers: {"content-type": "application/json"},
+		  data: JSON.stringify(req),
+		  url: "https://api.birdeye.com/resources/v1/review/businessId/" + data.businessid + "/?api_key=" + data.api_key + "&op=3&sindex=" + data.index + "&count=10"
+		})
+		  .done(function( response ) {
+		  	data.index = data.index + response.length;
+		  	data.reviews = response;
+		  	if(data.reviews.length >0) {
+			  	var strReviews ="<table class='reviews'>";
+			  	$.each(response, function(i, ele){
+			  		ele.sourceType = ele.sourceType == 'Our Website' ? "Our Website" : ele.sourceType;
+			  	 		strReviews += "<tr>";
+			  			strReviews += '<td class="review--pic"><div class="pic"><img src="'+ ele.reviewer.thumbnailUrl +'" alt="reviewer profile image"></div></td>';
+			  			strReviews += "<td class='review--info'>";
+			  				strReviews += "<div class='name--date'>";
+			  				 ele.reviewer.nickName = ele.reviewer.nickName ? ele.reviewer.nickName : (ele.reviewer.firstName ? ele.reviewer.firstName : "Anonymous");
+    		  					strReviews += "<div class='name'>" + ele.reviewer.nickName + "</div>";
+			  				strReviews += "<div class='date'>" +ele.reviewDate + "</div>";
+			  					if(ele.sourceType == 'Our Website'){
+			  				strReviews += '<a target="_blank" style="color: blue;" href="' + ele.uniqueReviewUrl + '"><div class="source">' + ele.sourceType + '</div></a>';
+			  			}else{
+			  				
+                             strReviews += '<a target="_blank" style="color: blue;" href="' + ele.reviewUrl + '"><div class="source">' + ele.sourceType + '</div></a>';
+			  			}
+			  		    strReviews += "</div>";
+			  				strReviews += "<div class='stars--rating'>";
+			  					strReviews += "<div class='stars'>";
+			  						for(var i=0; i<ele.rating;i++){
+			  							strReviews +="<i class='fa fa-star'></i>";
+			  						}
+			  					strReviews += "</div>";	
+			  			strReviews += "</div>";
+			  			if(!ele.comments == '' || !ele.comments == null){
+                             strReviews += "<div class='comments'>" + ele.comments + "</div>";
+
+			  			}else{
+			  				strReviews += "<div class='comments'></div>";
+			  			}
+			  			
+			  			strReviews += "</td>";
+			  		strReviews += "</tr>";
+			  	});
+			  	strReviews += "</table>";
+			  	$(".reviews-container .load-button").remove();
+            if (data.reviews.length >=10) {
+                strReviews += '<div class="load-button" style="text-align: center;"><a id="LoadReviews" class="button" style="margin: 20px auto;">Load More</a></div>';
+            }
+            $(".reviews-container").append(strReviews);
+            $('.reviews-container').off().on('click', 'a#LoadReviews', function() {
+                var selectedSources = [];
+                $('.reviews-source input').each(function() {
+                    if($(this). prop("checked")) {
+                        if($(this).val() != "all") {
+                            selectedSources.push($(this).val());
+                        }
+                    }
+                });
+                getReview(selectedSources);
+            });
+        } else {
+            $(".reviews-container").append('No Data Found');
+            $(".reviews-container .load-button").remove();
+        }
+      });
+	}; 
+	var getSeoData = function () {
+		$.ajax({
+	  method: "GET",
+	  dataType: 'json',
+	  url: "https://api.birdeye.com/resources/v1/business/" + data.businessid + "/?api_key=" + data.api_key + "&op=1"
+	})
+	  .done(function( response ) {
+	  	data.seo = response;
+	  	if(response) {
+         var strSeoData ="<div>";
+        strSeoData +="<div class='aggregate' style='color: black; text-align: center;' class='align-center' itemscope='0' itemtype='https://schema.org/LocalBusiness'> <span itemprop='name'>" + response.name + "</span> <div itemprop='aggregateRating' itemscope='0' itemtype='https://schema.org/AggregateRating'>Rated <span itemprop='ratingValue'>" + response.avgRating + "</span>/5.0 based on <span itemprop='reviewCount'><a href='" + response.baseUrl + "' target='_blank' style='color: blue;'>" + response.reviewCount + "</span></a> reviews </div><img title='" + response.name + "' style='display:none;' alt='" + response.name + "' src='" + response.coverImageUrl + "' itemprop='image'><div style='display:none;'><span itemprop='address' itemscope itemtype='http://schema.org/PostalAddress'><span itemprop='streetAddress' content='" + response.location.address1 + "'>" + response.location.address1 + "</span><span itemprop='addressLocality' content='" + response.location.city + "'>" + response.location.city + "</span><span itemprop='addressRegion' content='" + response.location.state + "'>" + response.location.state + "</span><span itemprop='postalCode' content='" + response.location.zip + "'>" + response.location.zip + "</span><span itemprop='addressCountry' content='US' style='display: none;'></span></span></div><span style='display:none;' itemprop='priceRange'>exclude</span><span style='display:none;' itemprop='telephone'>" + response.phone + "</span></div> </div>";
+			$(".SeoData").html(strSeoData);
+	  	}	
+	  	});
+	};
+	var getReviewOverall = function () {
+		var req1 = {};
+		$.ajax({
+		  method: "POST",
+		  dataType: 'json',
+		headers: {"content-type": "application/json"},
+		  data: JSON.stringify(req1),  
+		  url: "https://api.birdeye.com/resources/v1/review/businessid/" + data.businessid + "/summary?api_key=" + data.api_key + "&statuses=published"
+		})
+		  .done(function( response ) {
+		  	data.overall = response; 
+		  	if(response) {
+		  		var strOverall = "<div>";
+			  	for(var i=0; i<response.avgRating; i ++) {
+			  		strOverall += "<i class='fa fa-star'></i>";
+			  	}
+			  	strOverall += "</div> <div> <span class='count'>" + response.reviewCount + "</span> reviews </div>";
+			  	$(".reviews-overall").html(strOverall);
+
+
+			  	var strSummery = "<div class='reviews-sum'><div class='stars--rating'>";
+			  	$.each(response.ratings.reverse(), function (index, ele){
+			  		if( index < response.ratings.length-1) {
+				  		strSummery += "<div class='stars'>";
+				  		for(var i=0; i<ele.rating; i++) {
+				  			strSummery +="<i class='fa fa-star'></i>";
+				  		}
+				  		strSummery +="<div class='reviews-sum-count'>" + ele.reviewCount + "</div></div>";
+				  	}else {
+				  		if(ele.reviewCount >0){
+				  		strSummery += "<p>"+ele.reviewCount+ " review with no rating </p>";
+				  	}}
+			  	});
+  	          	strSummery += "</div></div>";
+			  	$(".reviews-summary").append(strSummery);
+			  	
+			  	getReviewSources(response)
+		  	}
+		  });
+	};
+	var getReviewSources = function (response) {
+		var strSummery = '<div class="reviews-source"><input type="checkbox" name="reviews-filter" value="all"> All</div>';
+		for(var i=0; i<response.sources.length; i ++) {
+			response.sources[i].sourceAlias = response.sources[i].sourceAlias == 'birdeye' ? "our_website" : response.sources[i].sourceAlias;
+			response.sources[i].sourceName = response.sources[i].sourceName == 'RemedyPoint' ? "Our Website" : response.sources[i].sourceAlias;
+			if(response.sources[i].sourceName == 'Our Website'){
+				response.sources[i].sourceAlias ='our_website';
+			}
+	  		strSummery += '<div class="reviews-source"><input type="checkbox" name="reviews-filter" value="' +response.sources[i].sourceAlias+ '"> ' +response.sources[i].sourceName + ' (' + response.sources[i].reviewCount + ')</div>';
+	  	}
+	  	$('.reviews-sources').append(strSummery);
+
+	  	$('body').on('change', '.reviews-source input', function(){
+	  		var isValue = $(this).val();
+	  		if(isValue == 'all') {
+	  			if($(this). prop("checked")) {
+	  				$('.reviews-source input'). prop("checked",true);
+	  			}else {
+	  				$('.reviews-source input'). prop("checked",false);
+	  			}
+	  		}
+	  		var arr = [];
+	  		$('.reviews-source input').each(function(){
+	  			if($(this). prop("checked")) {
+	  				if($(this).val() != "all")
+	  					arr.push($(this).val());
+	  			}
+	  		});
+	  		$('.reviews-container').empty();
+	  		data.index = 0;
+			getReview(arr);
+		});
+	};
+</script>
+<div class="becontainer">
+	
+	<div class="reviews-sidebar">
+		<div class="reviews-overall">
+		</div>
+		<div class="reviews-summary">
+			<span>Summary:</span>
+		</div>
+		<div class="reviews-sources">
+		<span>View by source:</span>
+		</div>
+	</div>
+	<div class="reviews-container">
+	</div>
+<div class="SeoData">
+</div>	
+<style>
+.aggregate{
+	color: #999;
+      font-family: 'Lato',arial,sans-serif;
+      font-size: 16px;
+       line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+}
+	.reviews-sidebar {
+	    border: 1px solid #ccc;
+	    float: left;
+	    margin-right: 3%;
+	    padding: 20px;
+	    width: auto;
+	    -moz-border-radius: 5px;
+	    -webkit-border-radius: 5px;
+	    border-radius: 5px;
+	    color: #000;
+      font-family: 'Lato',arial,sans-serif;
+      font-size: 16px;
+       line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+	}
+	.reviews-container {
+	    overflow: hidden;
+	    width: auto;
+	    display:  table-cell;
+	}
+	table.reviews {
+	    border-collapse: collapse;
+	    border-spacing: 0;
+	    margin-bottom: 0;
+	    width: 100%;
+	    color: #000;
+      font-family: 'Lato',arial,sans-serif;
+      font-size: 16px;
+       line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+	}
+	table.reviews tr:nth-child(2n+1) {
+		    background: #ffffff;
+	}
+	table.reviews tr {
+	    border-top: 1px solid #cccccc;
+	    border-bottom: none;
+	}
+	table.reviews tr td div.pic {
+	    width: 50px;
+	}
+	table.reviews div {
+	    ccolor: #333333;
+	}
+	table.reviews tr td:nth-of-type(2n) {
+	    padding: 12px 18px 12px 0px;
+	}
+	table.reviews tr td {
+	    border-right: none;
+	    vertical-align: top;
+           padding: 10px;
+	}
+	td:last-child {
+	    border-right: none;
+	}
+	table.reviews .name--date .name {
+	    display: inline-block;
+	    font-size: 18px;
+	    font-weight: normal;
+     font-family: 'Montserrat',sans-serif;
+     color: #333333;
+}
+*, *:before, *:after {
+	}
+	table.reviews .name--date .date {
+	    color: #666666;
+	    display: inline-block;
+	    float: right;
+	}
+	.name--date .source {
+	    clear: both;
+	    display: inline-block;
+	    float: right;
+	    margin-top: 5px;
+	}
+	table.reviews tr td .comments {
+	    margin-top: 10px;
+	    text-align: justify;
+	}
+	.stars--rating .stars {
+	    display: inline-block;
+	    margin-top: 5px;
+	    position: relative;
+	    
+	}
+	.reviews-summary {
+	    border-bottom: 1px solid #ccc;
+	    padding-bottom: 20px;
+	    margin-bottom: 20px;
+	}
+	.reviews-sum .stars--rating .stars {
+	    width: 100%;
+	}
+	.stars--rating .stars {
+	    display: inline-block;
+	    margin-top: 5px;
+	    position: relative;
+	}
+	.reviews-sum .stars--rating .reviews-sum-count {
+	    float: right;
+	}
+	.reviews-overall {
+	    border-bottom: 1px solid #ccc;
+	    padding-bottom: 20px;
+	    margin-bottom: 20px;
+	}
+	.fa {
+		display: inline-block;
+		vertical-align: sub;
+		padding-right: 2px;
+		color: #1976d2;
+		font-size:18px;
+	}
+	a#LoadReviews {
+		background: none repeat scroll 0 0 #51a8d3;
+		padding: 5px 20px;
+		text-decoration: none;
+		border-radius: 5px;
+		font-family: Arial,Verdana,sans-serif;
+		color: #ffffff;
+		cursor: pointer;
+	}
+    
+	.pic img {width: 45px;
+    border-radius:30px;
+   }
+   @media (max-width: 767px) {
+        .reviews-sidebar, .reviews-container {
+            display: inline-block;
+            width: 100%;
+            padding: 0 15px;
+            box-sizing: border-box;
+            margin: 0 0 20px;
+        }
+    }
+</style>
